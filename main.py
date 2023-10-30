@@ -2,20 +2,21 @@ from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import openpyxl
-import time
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, Menu
+import threading
 
 # Глобальная переменная для хранения имени файла Excel
 excel_file_name = ""
 def browse_file():
-    file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx")])
-    if file_path:
-        workbook = openpyxl.load_workbook(file_path)
-        global sheet
-        sheet = workbook.active
-        excel_file_name = file_path  # Обновляем имя файла
-        browse_button.config(text=f"Обзор ({excel_file_name})")
+    if not processing:
+        file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx")])
+        if file_path:
+            workbook = openpyxl.load_workbook(file_path)
+            global sheet
+            sheet = workbook.active
+            excel_file_name = file_path  # Обновляем имя файла
+            browse_button.config(text=f"Обзор ({excel_file_name})")
 def show_error_message():
     messagebox.showerror("Ошибка", "Укажите путь к Excel файлу")
     global error
@@ -145,6 +146,8 @@ apartment_col="D"
 consumerName_col="E"
 removeNum_col="H"
 removeType_col="I"
+
+processing = False
 def process_data():
     global special_installed
     try:
@@ -177,6 +180,11 @@ def process_data():
             installedType=common_installedType
             if str(apartments) in special_installed:
                 installedType=special_installedtype
+            # Конфиг полосы загрузки
+            percent_complete = (i / non_empty_row_count) * 100
+            progress_label.config(text=f"Записываю {i-1} из {non_empty_row_count-1}")
+            progress_bar['value'] = percent_complete
+            root.update_idletasks()
 
             input_consumerName(consumer)
             input_LS(ls)
@@ -187,16 +195,54 @@ def process_data():
             input_removedType(removeType)
             input_removedNumber(removeNum)
             input_installedType(installedType)
-            #input_plomb(plomb_counting(plomb,j))
+            input_plomb(plomb_counting(plomb,j))
             j+=1
             input_authorName(authorName)
             global error
             error=False
+
     except NameError:
         show_error_message()
+
+
+def select_all(event):
+    event.widget.selection_range(0, 'end')
+def copy(event):
+    event.widget.event_generate("<<Copy>>")
+def paste(event):
+    event.widget.event_generate("<<Paste>>")
+def cut(event):
+    event.widget.event_generate("<<Cut>>")
+
 root = tk.Tk()
 root.title("Замена текста в документе Word")
 root.geometry("400x400")
+
+def popup_menu(event):
+    edit_menu.post(event.x_root, event.y_root)
+    edit_menu.entryconfigure("Выделить все (Ctrl+A)", command=lambda: select_all(event))
+    edit_menu.entryconfigure("Копировать (Ctrl+C)", command=lambda: copy(event))
+    edit_menu.entryconfigure("Вставить (Ctrl+V)", command=lambda: paste(event))
+    edit_menu.entryconfigure("Вырезать (Ctrl+X)", command=lambda: cut(event))
+menu = Menu(root)
+root.config(menu=menu)
+
+
+# Тело меню редактирования
+edit_menu = Menu(menu)
+menu.add_cascade(label="Редактировать", menu=edit_menu)
+edit_menu.add_command(label="Выделить все (Ctrl+A)")
+edit_menu.add_command(label="Копировать (Ctrl+C)")
+edit_menu.add_command(label="Вставить (Ctrl+V)")
+edit_menu.add_command(label="Вырезать (Ctrl+X)")
+
+def edit_bindings(entry):
+    entry.bind("Ctrl+v", paste)
+    entry.bind("Ctrl+c", copy)
+    entry.bind("Ctrl+a", select_all)
+    entry.bind("Ctrl+x", cut)
+    entry.bind("<Button-3>", popup_menu)
+
 
 # Создаем и размещаем виджеты на первой странице
 frame1 = ttk.Frame(root)
@@ -204,39 +250,65 @@ frame1 = ttk.Frame(root)
 
 browse_button = ttk.Button(frame1, text="Обзор", command=browse_file)
 city_label = ttk.Label(frame1, text="Город:")
+
 city_entry = ttk.Entry(frame1)
+edit_bindings(city_entry)
 installedType_label = ttk.Label(frame1, text="Тип установленных ПУ:")
 installedType_entry = ttk.Entry(frame1)
+edit_bindings(installedType_entry)
 special_installed_label = ttk.Label(frame1, text="Номера GPRS ПУ через пробел\n(Например: 1 11 21)):")
 special_installed_entry = ttk.Entry(frame1)
+edit_bindings(special_installed_entry)
 special_installedtype_label = ttk.Label(frame1, text="Тип GPRS ПУ:")
 special_installedtype_entry = ttk.Entry(frame1)
+edit_bindings(special_installedtype_entry)
 authorName_label = ttk.Label(frame1, text="ФИО представителя:")
 authorName_entry = ttk.Entry(frame1)
+edit_bindings(authorName_entry)
 plomb_label = ttk.Label(frame1, text="Пломба")
 plomb_entry = ttk.Entry(frame1)
+edit_bindings(plomb_entry)
+
 page=1
 def nextPage_and_process():
-        start_time = time.time()
+        global processing
+        processing = True
+        progress_label.pack()
+        progress_bar.pack()
         process_data()
+        progress_label.forget()
+        progress_bar.forget()
         if error==False:
             frame1.pack_forget()
             frame2.pack()
             root.after(500, show_first)
             global page
             page+=1
-        print(time.time() - start_time)
+        processing = False
+
+
+def processing_thread():
+    if not processing:
+        download_thread = threading.Thread(target=nextPage_and_process)
+        download_thread.daemon = True
+        download_thread.start()
 def enter_for_buttons():
     if page==1:
-        nextPage_and_process()
+        processing_thread()
     elif page==2:
         range_handler()
-next_button = ttk.Button(frame1, text="Далее", command=nextPage_and_process)
+next_button = ttk.Button(frame1, text="Далее", command=processing_thread)
 def wanna_change_cols():
-    frame1.pack_forget()
-    frame3.pack(expand=True, fill='both')
+    if not processing:
+        frame1.pack_forget()
+        frame3.pack(expand=True, fill='both')
 cols_change = ttk.Button(frame1, text="Изменить номера столбцов", command=wanna_change_cols)
+
 root.bind("<Return>", lambda event=None: enter_for_buttons())
+
+# Полоса загрузки
+progress_bar = ttk.Progressbar(root, orient="horizontal", length=200, mode="determinate")
+progress_label = ttk.Label(root, text="")
 
 browse_button.pack()
 city_label.pack()
@@ -253,6 +325,7 @@ authorName_label.pack()
 authorName_entry.pack()
 next_button.pack()
 cols_change.pack()
+
 
 
 i=2
@@ -276,47 +349,69 @@ def input_export():
     #Разблокировать кнопку после выполнения
     installedNum_entry.config(state=tk.NORMAL)
     enter_button.config(state=tk.NORMAL)
+saving = False
 def save():
+    progress_label.pack()
+    progress_bar.pack()
+    global saving
+    saving = True
     #При сохранении незаполненного файла все образцы номеров стираются
     inf_InstaledNum=inf_InstaledNum_entry.get()
     inf_InstaledNum_special=inf_InstaledNum_special_entry.get()
+
     for i in range(2,non_empty_row_count+1):
+            # Конфиг полосы загрузки
+            percent_complete = (i / non_empty_row_count) * 100
+            progress_label.config(text=f"Записываю {i-1} из {non_empty_row_count-1}")
+            progress_bar['value'] = percent_complete
+            root.update_idletasks()
+
             apartments=sheet[f'{apartment_col}{i}'].value
             if str(apartments) in special_installed:
                 input_values_into_table("/НомерУст",inf_InstaledNum_special)
             else:
                 input_values_into_table("/НомерУст",inf_InstaledNum)
+  
     file_path = filedialog.asksaveasfilename(defaultextension=".docx", filetypes=[("Word Files", "*.docx")])
     if file_path:
         doc.save(file_path)
+        saving = False
     root.destroy()
 # Создаем фрейм
 frame2 = ttk.Frame(root)
 apartments_label = ttk.Label(frame2, text="")
 removeNum_label = ttk.Label(frame2, text="")
 
-
+def save_thread():
+    if not saving:
+        download_thread = threading.Thread(target=save)
+        download_thread.daemon = True
+        download_thread.start()
 
 def range_handler():
-    if i<non_empty_row_count:
-        input_export()
-        installedNum_entry.delete(0,tk.END)
-    else:
-        input_export()
-        save()
+    if not saving:
+        if i<non_empty_row_count:
+            input_export()
+            installedNum_entry.delete(0,tk.END)
+        else:
+            input_export()
+            save_thread()
 
 # Кнопка для ввода данных
 enter_button = ttk.Button(frame2, text="Ввод", command=range_handler)
-save_button = ttk.Button(frame2, text="Сохранить", command=save)
+save_button = ttk.Button(frame2, text="Сохранить", command=save_thread)
 # Метка и поле ввода для номера установленного ПУ
 installedNum_label = ttk.Label(frame2, text="Номер установленного ПУ:")
 installedNum_entry = ttk.Entry(frame2)
+edit_bindings(installedNum_entry)
 installedNum_value = tk.StringVar()
 inf_InstaledNum_label = ttk.Label(frame2, text="Вставить значение во все незаполненные номера установленных ПУ")
 inf_InstaledNum_common_label = ttk.Label(frame2, text="Для обычных ПУ")
 inf_InstaledNum_entry=ttk.Entry(frame2)
+edit_bindings(inf_InstaledNum_entry)
 inf_InstaledNum_special_label = ttk.Label(frame2, text="Для GPRS ПУ")
 inf_InstaledNum_special_entry=ttk.Entry(frame2)
+edit_bindings(inf_InstaledNum_special_entry)
 
 # Размещаем виджеты на фрейме
 apartments_label.pack()
