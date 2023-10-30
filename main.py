@@ -26,30 +26,30 @@ doc = Document("Образец.docx")
 
 #Функции изменения полей в документе
 def input_values(sample,new,underline):
-    if new==None:
-        new=""
-    count=0
+    if new == None:
+        new = ""
+    count = 0
     for paragraph in doc.paragraphs:
-        if count>0:
+        if count > 0:
             break
         if sample in paragraph.text:
-            count+=1
+            count += 1
             for run in paragraph.runs:
                 if sample in run.text:
                     # Заменяем образец текста новым текстом с сохранением форматирования
                     run.text = run.text.replace(sample, str(new),1)
-                    run.font.size=Pt(10)
-                    run.font.name="Times New Roman"
+                    run.font.size = Pt(10)
+                    run.font.name = "Times New Roman"
                     run.underline = underline
                     
-def input_values_into_table(sample,new):
-    if new==None:
-        new=""
-    count=0
+def input_values_into_table(sample, new):
+    if new == None:
+        new = ""
+    count = 0
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
-                if count>0:
+                if count > 0:
                     break
                 if sample in cell.text:
                     count+=1
@@ -58,10 +58,10 @@ def input_values_into_table(sample,new):
                             if sample in run.text:
                                 # Заменяем образец текста новым текстом с сохранением форматирования
                                 run.text = run.text.replace(sample, str(new),1)
-                                run.font.size=Pt(10)
-                                run.font.name="Times New Roman"
+                                run.font.size = Pt(10)
+                                run.font.name = "Times New Roman"
 
-def inf_input_values_into_table(sample,new):
+def inf_input_values_into_table(sample, new):
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
@@ -71,8 +71,8 @@ def inf_input_values_into_table(sample,new):
                             if sample in run.text:
                                 # Заменяем образец текста новым текстом с сохранением форматирования
                                 run.text = run.text.replace(sample, new)
-                                run.font.size=Pt(10)
-                                run.font.name="Times New Roman"
+                                run.font.size = Pt(10)
+                                run.font.name = "Times New Roman"
 
 def input_LS(new):
     #Ввод лицевого счета
@@ -131,21 +131,21 @@ def input_authorName(new):
 
 def plomb_counting(plomb,i):
     try:
-        plomb=plomb.split("*")
-        num_part=plomb[1][:2]
-        num=plomb[1][2::]
-        number=plomb[0]+"*"+num_part+str(int(num)+i)
+        plomb = plomb.split("*")
+        num_part = plomb[1][:2]
+        num = plomb[1][2::]
+        number = plomb[0] + "*" + num_part + str(int(num)+i)
         return number
     except:
         pass
 
-LS_col="A"
-street_col="B"
-house_col="C"
-apartment_col="D"
-consumerName_col="E"
-removeNum_col="H"
-removeType_col="I"
+LS_col = "A"
+street_col = "B"
+house_col = "C"
+apartment_col = "D"
+consumerName_col = "E"
+removeNum_col = "H"
+removeType_col = "I"
 
 processing = False
 def process_data():
@@ -160,8 +160,8 @@ def process_data():
         if special_installed:
             special_installedtype = special_installedtype_entry.get()
         
-        street=sheet[f'{street_col}{3}'].value
-        house=sheet[f'{house_col}{3}'].value
+        street = sheet[f'{street_col}{3}'].value
+        house = sheet[f'{house_col}{3}'].value
         # Счетчик строк
         # Первая строка не пустая!
         global non_empty_row_count
@@ -169,7 +169,7 @@ def process_data():
         for row in sheet.iter_rows(values_only=True):
             if any(cell is not None for cell in row):
                 non_empty_row_count += 1
-        j=0
+        j = 0
         for i in range(2,non_empty_row_count+1):
             ls=sheet[f'{LS_col}{i}'].value
             apartments=sheet[f'{apartment_col}{i}'].value
@@ -195,8 +195,8 @@ def process_data():
             input_removedType(removeType)
             input_removedNumber(removeNum)
             input_installedType(installedType)
-            input_plomb(plomb_counting(plomb,j))
-            j+=1
+            input_plomb(plomb_counting(plomb, j))
+            j += 1
             input_authorName(authorName)
             global error
             error=False
@@ -269,7 +269,7 @@ plomb_label = ttk.Label(frame1, text="Пломба")
 plomb_entry = ttk.Entry(frame1)
 edit_bindings(plomb_entry)
 
-page=1
+page = 1
 def nextPage_and_process():
         global processing
         processing = True
@@ -278,12 +278,12 @@ def nextPage_and_process():
         process_data()
         progress_label.forget()
         progress_bar.forget()
-        if error==False:
+        if error == False:
             frame1.pack_forget()
             frame2.pack()
             root.after(500, show_first)
             global page
-            page+=1
+            page += 1
         processing = False
 
 
@@ -293,9 +293,9 @@ def processing_thread():
         download_thread.daemon = True
         download_thread.start()
 def enter_for_buttons():
-    if page==1:
+    if page == 1:
         processing_thread()
-    elif page==2:
+    elif page == 2:
         range_handler()
 next_button = ttk.Button(frame1, text="Далее", command=processing_thread)
 def wanna_change_cols():
@@ -346,7 +346,7 @@ def input_export():
     input_installedNumber(installedNum)
     i += 1
     
-    #Разблокировать кнопку после выполнения
+    # Разблокировать кнопку после выполнения
     installedNum_entry.config(state=tk.NORMAL)
     enter_button.config(state=tk.NORMAL)
 saving = False
@@ -355,7 +355,7 @@ def save():
     progress_bar.pack()
     global saving
     saving = True
-    #При сохранении незаполненного файла все образцы номеров стираются
+    # При сохранении незаполненного файла все образцы номеров стираются
     inf_InstaledNum=inf_InstaledNum_entry.get()
     inf_InstaledNum_special=inf_InstaledNum_special_entry.get()
 
