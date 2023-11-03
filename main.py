@@ -139,13 +139,14 @@ def plomb_counting(plomb,i):
     except:
         pass
 
+# Столбцы Excel по умолчанию
 LS_col = "A"
-street_col = "B"
-house_col = "C"
-apartment_col = "D"
-consumerName_col = "E"
-removeNum_col = "H"
-removeType_col = "I"
+street_col = "C"
+house_col = "D"
+apartment_col = "E"
+consumerName_col = "B"
+removeNum_col = "F"
+removeType_col = "G"
 
 processing = False
 def process_data():
